@@ -1,0 +1,438 @@
+@model Copilot.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Authenticate";
+}
+
+<div class="auth-wrapper">
+    <!-- Blurry Animated Background Blobs -->
+    <div class="glow-blob blob-1"></div>
+    <div class="glow-blob blob-2"></div>
+    <div class="glow-blob blob-3"></div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="split-auth-container">
+        <!-- Left Side: Interactive Security Graphics Panel -->
+        <div class="auth-graphic-panel">
+            <div class="graphic-content">
+                <div class="graphic-logo-wrapper">
+                    <div class="glowing-ring ring-1"></div>
+                    <div class="glowing-ring ring-2"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="graphic-logo-icon">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </div>
+                <h1>Secure Gateway</h1>
+                <p class="graphic-desc">Experience next-generation authentication secured with cryptographic JWT validation and secure password salting.</p>
+                
+                <ul class="feature-bullets">
+                    <li>
+                        <div class="bullet-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="bullet-text">
+                            <strong>HttpOnly Cookie Storage</strong>
+                            <span>Shields tokens from malicious XSS access.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="bullet-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="bullet-text">
+                            <strong>PBKDF2 Password Hashing</strong>
+                            <span>Cryptographically hashes and salts credentials.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="bullet-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="bullet-text">
+                            <strong>Antiforgery Validation</strong>
+                            <span>Built-in CSRF token protection on all routes.</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Right Side: The 3D Flip Card -->
+        <div class="auth-card-container">
+            <div class="auth-card" id="authCard">
+                <!-- Front: LOGIN FORM -->
+                <div class="card-face card-front">
+                    <div class="brand-header">
+                        <h2>Welcome Back</h2>
+                        <p class="brand-subtitle">Enter your details to sign in</p>
+                    </div>
+
+                    <form id="loginForm" method="post" class="auth-form">
+                        @Html.AntiForgeryToken()
+                        <div class="form-group-custom">
+                            <label for="loginUsername">Username or Email</label>
+                            <div class="input-wrapper">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="input-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <input type="text" id="loginUsername" name="UsernameOrEmail" placeholder="Enter username or email" required />
+                            </div>
+                        </div>
+
+                        <div class="form-group-custom">
+                            <label for="loginPassword">Password</label>
+                            <div class="input-wrapper">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="input-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <input type="password" id="loginPassword" name="Password" placeholder="••••••••" required />
+                                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('loginPassword')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="eye-open"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="forgot-link-wrapper">
+                            <a href="#" class="btn-link-custom">Forgot Password?</a>
+                        </div>
+
+                        <button type="submit" class="btn-primary-custom" id="loginBtn">
+                            <span>Sign In</span>
+                            <div class="spinner" id="loginSpinner" style="display: none;"></div>
+                        </button>
+
+                        <div class="social-login-separator">
+                            <span>or connect with</span>
+                        </div>
+                        
+                        <div class="social-login-grid">
+                            <button type="button" class="btn-social" onclick="window.location.href='@Url.Action("GoogleLogin", "Auth")'">
+                                <img src="https://img.icons8.com/color/24/000000/google-logo.png" alt="Google" />
+                                <span>Google</span>
+                            </button>
+                            <button type="button" class="btn-social" onclick="showToast('GitHub integration is a demo.', 'info')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                <span>GitHub</span>
+                            </button>
+                        </div>
+
+                        <div class="auth-switch">
+                            Don't have an account? <a href="#" id="toSignup" class="switch-link">Create one</a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Back: SIGNUP FORM -->
+                <div class="card-face card-back">
+                    <div class="brand-header">
+                        <h2>Create Account</h2>
+                        <p class="brand-subtitle">Join us to start managing your workspace</p>
+                    </div>
+
+                    <form id="signupForm" method="post" class="auth-form">
+                        @Html.AntiForgeryToken()
+                        <div class="form-group-custom">
+                            <label for="signupUsername">Username</label>
+                            <div class="input-wrapper">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="input-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <input type="text" id="signupUsername" name="Username" placeholder="Alphanumeric, 3+ chars" required />
+                            </div>
+                        </div>
+
+                        <div class="form-group-custom">
+                            <label for="signupEmail">Email Address</label>
+                            <div class="input-wrapper">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="input-icon"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                <input type="email" id="signupEmail" name="Email" placeholder="you@example.com" required />
+                            </div>
+                        </div>
+
+                        <div class="form-group-custom">
+                            <label for="signupPassword">Password</label>
+                            <div class="input-wrapper">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="input-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <input type="password" id="signupPassword" name="Password" placeholder="••••••••" required />
+                                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('signupPassword')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="eye-open"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                            
+                            <!-- Password Strength Indicator -->
+                            <div class="password-strength-container">
+                                <div class="strength-bar-wrapper">
+                                    <div class="strength-bar" id="strengthBar"></div>
+                                </div>
+                                <span class="strength-text" id="strengthText">Very Weak</span>
+                                
+                                <ul class="strength-rules">
+                                    <li id="rule-length" class="invalid">At least 6 characters</li>
+                                    <li id="rule-upper" class="invalid">One uppercase letter</li>
+                                    <li id="rule-number" class="invalid">One number</li>
+                                    <li id="rule-special" class="invalid">One special character</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="form-group-custom">
+                            <label for="signupConfirmPassword">Confirm Password</label>
+                            <div class="input-wrapper">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="input-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <input type="password" id="signupConfirmPassword" name="ConfirmPassword" placeholder="••••••••" required />
+                                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('signupConfirmPassword')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="eye-open"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary-custom" id="signupBtn">
+                            <span>Register Account</span>
+                            <div class="spinner" id="signupSpinner" style="display: none;"></div>
+                        </button>
+
+                        <div class="auth-switch">
+                            Already have an account? <a href="#" id="toLogin" class="switch-link">Log in</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Check for server-side error messages (e.g. from Google redirect)
+        const serverError = '@Html.Raw(TempData["ErrorMessage"] != null ? System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(TempData["ErrorMessage"].ToString()) : "")';
+        if (serverError && serverError.length > 0) {
+            window.addEventListener('DOMContentLoaded', () => {
+                showToast(serverError, 'error');
+            });
+        }
+
+        // Flip Card functionality
+        const authCard = document.getElementById('authCard');
+        const toSignup = document.getElementById('toSignup');
+        const toLogin = document.getElementById('toLogin');
+
+        toSignup.addEventListener('click', (e) => {
+            e.preventDefault();
+            authCard.classList.add('flipped');
+            document.title = "Register - Copilot";
+        });
+
+        toLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            authCard.classList.remove('flipped');
+            document.title = "Sign In - Copilot";
+        });
+
+        // Show/Hide Password
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling;
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.classList.add('visible');
+            } else {
+                input.type = 'password';
+                button.classList.remove('visible');
+            }
+        }
+
+        // Live Password Strength Checker
+        const pwdInput = document.getElementById('signupPassword');
+        const strengthBar = document.getElementById('strengthBar');
+        const strengthText = document.getElementById('strengthText');
+        
+        const rules = {
+            length: document.getElementById('rule-length'),
+            upper: document.getElementById('rule-upper'),
+            number: document.getElementById('rule-number'),
+            special: document.getElementById('rule-special')
+        };
+
+        pwdInput.addEventListener('input', () => {
+            const val = pwdInput.value;
+            let score = 0;
+
+            // Rule 1: Min 6 characters
+            if (val.length >= 6) {
+                rules.length.className = 'valid';
+                score++;
+            } else {
+                rules.length.className = 'invalid';
+            }
+
+            // Rule 2: Upper Case
+            if (/[A-Z]/.test(val)) {
+                rules.upper.className = 'valid';
+                score++;
+            } else {
+                rules.upper.className = 'invalid';
+            }
+
+            // Rule 3: Number
+            if (/[0-9]/.test(val)) {
+                rules.number.className = 'valid';
+                score++;
+            } else {
+                rules.number.className = 'invalid';
+            }
+
+            // Rule 4: Special Char
+            if (/[^A-Za-z0-9]/.test(val)) {
+                rules.special.className = 'valid';
+                score++;
+            } else {
+                rules.special.className = 'invalid';
+            }
+
+            // Update strength bar color and text
+            strengthBar.className = 'strength-bar'; // reset
+            if (val.length === 0) {
+                strengthBar.style.width = '0%';
+                strengthText.innerText = 'Very Weak';
+                strengthText.className = 'strength-text text-danger';
+            } else if (score <= 1) {
+                strengthBar.style.width = '25%';
+                strengthBar.classList.add('bg-danger');
+                strengthText.innerText = 'Weak';
+                strengthText.className = 'strength-text text-danger';
+            } else if (score === 2) {
+                strengthBar.style.width = '50%';
+                strengthBar.classList.add('bg-warning');
+                strengthText.innerText = 'Moderate';
+                strengthText.className = 'strength-text text-warning';
+            } else if (score === 3) {
+                strengthBar.style.width = '75%';
+                strengthBar.classList.add('bg-info');
+                strengthText.innerText = 'Strong';
+                strengthText.className = 'strength-text text-info';
+            } else if (score === 4) {
+                strengthBar.style.width = '100%';
+                strengthBar.classList.add('bg-success');
+                strengthText.innerText = 'Very Strong';
+                strengthText.className = 'strength-text text-success';
+            }
+        });
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `custom-toast toast-${type}`;
+            
+            let icon = '';
+            if (type === 'success') {
+                icon = '<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            } else if (type === 'error') {
+                icon = '<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            } else {
+                icon = '<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+            }
+
+            toast.innerHTML = `${icon}<span class="toast-message">${message}</span>`;
+            container.appendChild(toast);
+
+            // Auto dismiss
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        // Handle AJAX form submissions
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginSpinner = document.getElementById('loginSpinner');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            loginBtn.disabled = true;
+            loginSpinner.style.display = 'inline-block';
+
+            const formData = new FormData(loginForm);
+            
+            try {
+                const response = await fetch('@Url.Action("Login", "Auth")', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 1200);
+                } else {
+                    showToast(data.message || 'Login failed.', 'error');
+                    loginBtn.disabled = false;
+                    loginSpinner.style.display = 'none';
+                }
+            } catch (err) {
+                showToast('An error occurred during submission.', 'error');
+                loginBtn.disabled = false;
+                loginSpinner.style.display = 'none';
+            }
+        });
+
+        const signupForm = document.getElementById('signupForm');
+        const signupBtn = document.getElementById('signupBtn');
+        const signupSpinner = document.getElementById('signupSpinner');
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Client-side validations
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+            if (password.length < 6) {
+                showToast('Password must be at least 6 characters long.', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match.', 'error');
+                return;
+            }
+
+            signupBtn.disabled = true;
+            signupSpinner.style.display = 'inline-block';
+
+            const formData = new FormData(signupForm);
+
+            try {
+                const response = await fetch('@Url.Action("Signup", "Auth")', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    signupForm.reset();
+                    // Reset rules and strength bar
+                    document.querySelectorAll('.strength-rules li').forEach(li => li.className = 'invalid');
+                    strengthBar.style.width = '0%';
+                    strengthText.innerText = 'Very Weak';
+                    strengthText.className = 'strength-text text-danger';
+                    
+                    // Flip to Login face after brief delay
+                    setTimeout(() => {
+                        authCard.classList.remove('flipped');
+                        document.title = "Sign In - Copilot";
+                    }, 2000);
+                } else {
+                    showToast(data.message || 'Registration failed.', 'error');
+                }
+            } catch (err) {
+                showToast('An error occurred during submission.', 'error');
+            } finally {
+                signupBtn.disabled = false;
+                signupSpinner.style.display = 'none';
+            }
+        });
+    </script>
+}

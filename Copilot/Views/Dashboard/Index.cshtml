@@ -1,0 +1,2061 @@
+@using Copilot.Controllers
+@{
+    ViewData["Title"] = "ERP Console";
+    
+    // Retrieve lists from ViewBag
+    var invoices = ViewBag.Invoices as List<Copilot.Models.Invoice> ?? new List<Copilot.Models.Invoice>();
+    var inventory = ViewBag.Inventory as List<Copilot.Models.InventoryItem> ?? new List<Copilot.Models.InventoryItem>();
+    var purchaseOrders = ViewBag.PurchaseOrders as List<Copilot.Models.PurchaseOrder> ?? new List<Copilot.Models.PurchaseOrder>();
+    var auditLogs = ViewBag.AuditLogs as List<Copilot.Models.AuditLog> ?? new List<Copilot.Models.AuditLog>();
+    var usersList = ViewBag.UsersList as List<UserDto> ?? new List<UserDto>();
+    var shopifyOrders = ViewBag.ShopifyOrders as List<Copilot.Models.ShopifyOrder> ?? new List<Copilot.Models.ShopifyOrder>();
+    
+    // KPIs
+    var totalRevenue = ViewBag.TotalRevenue != null ? (decimal)ViewBag.TotalRevenue : 0m;
+    var pendingRevenue = ViewBag.PendingRevenue != null ? (decimal)ViewBag.PendingRevenue : 0m;
+    var activeOrdersCount = ViewBag.ActiveOrdersCount != null ? (int)ViewBag.ActiveOrdersCount : 0;
+    var expenseRatio = ViewBag.ExpenseRatio != null ? (decimal)ViewBag.ExpenseRatio : 0m;
+    var availableInventoryCount = ViewBag.AvailableInventoryCount != null ? (int)ViewBag.AvailableInventoryCount : 0;
+
+    // Shopify Specific KPIs
+    var shopifyTotalSales = ViewBag.ShopifyTotalSales != null ? (decimal)ViewBag.ShopifyTotalSales : 0m;
+    var shopifyOrderCount = ViewBag.ShopifyOrderCount != null ? (int)ViewBag.ShopifyOrderCount : 0;
+    var shopifyUnfulfilledCount = ViewBag.ShopifyUnfulfilledCount != null ? (int)ViewBag.ShopifyUnfulfilledCount : 0;
+}
+
+<div class="dashboard-wrapper">
+    <!-- Glow Blob Background Decorations -->
+    <div class="glow-blob blob-1"></div>
+    <div class="glow-blob blob-2"></div>
+    
+    <!-- Mobile Navigation Topbar -->
+    <div class="mobile-header d-lg-none">
+        <button class="menu-toggle-btn" id="menuToggle" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="mobile-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="me-2" style="color: #4f46e5;"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span>Copilot ERP</span>
+        </div>
+        <div class="mobile-profile-avatar" onclick="document.querySelector('.erp-sidebar').classList.add('active')">
+            @(!string.IsNullOrEmpty(ViewBag.Username) ? ViewBag.Username[0].ToString().ToUpper() : "U")
+        </div>
+    </div>
+
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="erp-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="erp-sidebar">
+            <!-- Sidebar Close Header (Mobile only) -->
+            <div class="d-flex justify-content-between align-items-center mb-3 d-lg-none border-bottom pb-2">
+                <span class="fw-bold text-muted" style="font-size: 0.8rem;">NAVIGATION MENU</span>
+                <button type="button" class="btn-close-sidebar" onclick="document.querySelector('.erp-sidebar').classList.remove('active')" style="background: none; border: none; font-size: 1.6rem; line-height: 1; color: var(--text-muted); padding: 0.2rem 0.5rem; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div class="erp-sidebar-header">
+                <div class="erp-sidebar-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="me-2" style="color: #4f46e5;"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    <span>Copilot ERP</span>
+                </div>
+                <div class="erp-sidebar-desc">Management Console</div>
+            </div>
+
+            <!-- User Info Card -->
+            <div class="d-flex align-items-center p-3 rounded-4 bg-light border border-1" style="gap: 0.75rem;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white" style="width: 42px; height: 42px; font-weight: 700; font-size: 1.1rem; background: var(--primary-gradient) !important;">
+                    @(!string.IsNullOrEmpty(ViewBag.Username) ? ViewBag.Username[0].ToString().ToUpper() : "U")
+                </div>
+                <div class="d-flex flex-column overflow-hidden" style="line-height: 1.2;">
+                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.95rem;">@ViewBag.Username</span>
+                    <span class="text-muted text-truncate" style="font-size: 0.78rem;">@ViewBag.Email</span>
+                </div>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="erp-nav-list">
+                <button class="erp-nav-btn active" data-target="overview">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                    <span>Overview</span>
+                </button>
+                <button class="erp-nav-btn" data-target="invoices">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 4v16M2 8h20M2 16h20"/></svg>
+                    <span>Sales & Invoices</span>
+                </button>
+                <button class="erp-nav-btn" data-target="inventory">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    <span>Inventory Catalog</span>
+                </button>
+                <button class="erp-nav-btn" data-target="purchaseorders">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span>Purchase Orders</span>
+                </button>
+                <button class="erp-nav-btn" data-target="shopify">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    <span>Shopify Orders</span>
+                </button>
+                <button class="erp-nav-btn" data-target="auditlogs">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+                    <span>System Audit Logs</span>
+                </button>
+            </div>
+
+            <!-- Footer Meta Info -->
+            <div class="mt-auto pt-3 border-top border-1" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="text-muted">Session Security:</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem; font-weight: 600;">@ViewBag.AuthMethod</span>
+                </div>
+                <form asp-controller="Auth" asp-action="Logout" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="w-100 btn btn-outline-danger border border-1 py-2 rounded-3 d-flex align-items-center justify-content-center" style="gap: 0.5rem; font-weight: 600; font-size: 0.85rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                        <span>Sign Out Session</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="erp-content">
+            
+            <!-- Tab: OVERVIEW -->
+            <section class="erp-tab-content active" id="overview">
+                <!-- Title Header -->
+                <div class="erp-module-header">
+                    <div class="erp-module-title">
+                        <h2>Enterprise Overview</h2>
+                        <p>Real-time operating indicators, assets metrics, and financial reporting.</p>
+                    </div>
+                </div>
+
+                <!-- KPI Grid -->
+                <div class="stats-widget-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">$@totalRevenue.ToString("N2")</span>
+                            <span class="stat-title">Total Revenue (Paid)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: var(--warning-color); border-color: rgba(245, 158, 11, 0.25); background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.08) 100%) !important;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">$@pendingRevenue.ToString("N2")</span>
+                            <span class="stat-title">Pending Account Receivables</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #3b82f6; border-color: rgba(59, 130, 246, 0.25); background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.08) 100%) !important;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">@availableInventoryCount units</span>
+                            <span class="stat-title">Stock Items Available</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #bd93f9; border-color: rgba(189, 147, 249, 0.25); background: linear-gradient(135deg, rgba(189, 147, 249, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%) !important;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">@activeOrdersCount orders</span>
+                            <span class="stat-title">Active Purchase Orders</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #06b6d4; border-color: rgba(6, 182, 212, 0.25); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(8, 145, 178, 0.08) 100%) !important;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">@expenseRatio%</span>
+                            <span class="stat-title">Expense-to-Revenue Ratio</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="dashboard-charts-grid">
+                    <!-- Line Chart Card -->
+                    <div class="db-table-card chart-card-custom d-flex flex-column justify-content-between p-4" style="min-height: 320px;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="m-0 fw-bold text-dark" style="font-size: 1.1rem;">Cash Flow Trend (Receivables vs Paid)</h4>
+                            <span class="badge bg-light text-dark border border-1 py-1 px-2" style="font-size: 0.72rem;">Last 30 Days</span>
+                        </div>
+                        <div class="chart-container-visual flex-grow-1 d-flex align-items-center justify-content-center">
+                            <!-- Premium SVG Chart -->
+                            <svg class="svg-chart-graph" viewBox="0 0 500 200" style="max-height: 180px; width: 100%;">
+                                <defs>
+                                    <linearGradient id="gradient-line-paid" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.15"/>
+                                        <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.0"/>
+                                    </linearGradient>
+                                </defs>
+                                <!-- Grid Lines -->
+                                <line x1="40" y1="20" x2="480" y2="20" stroke="#f1f5f9" stroke-width="1.5" />
+                                <line x1="40" y1="70" x2="480" y2="70" stroke="#f1f5f9" stroke-width="1.5" />
+                                <line x1="40" y1="120" x2="480" y2="120" stroke="#f1f5f9" stroke-width="1.5" />
+                                <line x1="40" y1="170" x2="480" y2="170" stroke="#cbd5e1" stroke-width="1.5" />
+
+                                <!-- Shadow Area Under Curve -->
+                                <path d="M 40 170 L 40 130 L 120 110 L 200 145 L 280 80 L 360 95 L 440 45 L 480 65 L 480 170 Z" fill="url(#gradient-line-paid)" />
+
+                                <!-- Paid Line Path -->
+                                <path d="M 40 130 Q 80 110 120 110 T 200 145 T 280 80 T 360 95 T 440 45 T 480 65" fill="none" stroke="#4f46e5" stroke-width="3.5" stroke-linecap="round" />
+
+                                <!-- Data Nodes -->
+                                <circle cx="120" cy="110" r="5" fill="#4f46e5" stroke="#ffffff" stroke-width="2"/>
+                                <circle cx="280" cy="80" r="5" fill="#4f46e5" stroke="#ffffff" stroke-width="2"/>
+                                <circle cx="440" cy="45" r="5" fill="#4f46e5" stroke="#ffffff" stroke-width="2"/>
+
+                                <!-- Text Labels -->
+                                <text x="40" y="185" class="chart-txt">Week 1</text>
+                                <text x="180" y="185" class="chart-txt">Week 2</text>
+                                <text x="320" y="185" class="chart-txt">Week 3</text>
+                                <text x="450" y="185" class="chart-txt">Week 4</text>
+
+                                <text x="15" y="25" class="chart-txt">$25K</text>
+                                <text x="15" y="75" class="chart-txt">$15K</text>
+                                <text x="15" y="125" class="chart-txt">$5K</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Column Progress Chart Card -->
+                    <div class="db-table-card p-4 d-flex flex-column justify-content-between" style="min-height: 320px;">
+                        <div>
+                            <h4 class="m-0 fw-bold text-dark mb-2" style="font-size: 1.1rem;">Asset Allocation & Capacity</h4>
+                            <p class="text-muted m-0" style="font-size: 0.8rem;">Current levels of storage and supplier integration.</p>
+                        </div>
+
+                        <div class="d-flex flex-column gap-3 my-3">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.85rem; font-weight: 500;">
+                                    <span class="text-secondary">Warehouse Storage Utilized</span>
+                                    <span class="text-dark">@(availableInventoryCount > 0 ? Math.Min(100, availableInventoryCount / 5).ToString("0") : "0")%</span>
+                                </div>
+                                <div class="progress rounded-pill bg-light border" style="height: 10px;">
+                                    <div class="progress-bar rounded-pill" role="progressbar" style="width: @(availableInventoryCount > 0 ? Math.Min(100, availableInventoryCount / 5).ToString("0") : "0")%; background: var(--primary-gradient) !important;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.85rem; font-weight: 500;">
+                                    <span class="text-secondary">Procurement Spend Budget</span>
+                                    <span class="text-dark">@expenseRatio%</span>
+                                </div>
+                                <div class="progress rounded-pill bg-light border" style="height: 10px;">
+                                    <div class="progress-bar rounded-pill" role="progressbar" style="width: @expenseRatio%; background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%) !important;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.85rem; font-weight: 500;">
+                                    <span class="text-secondary">Accounts Receivable Liquidation</span>
+                                    <span class="text-dark">@(totalRevenue + pendingRevenue > 0 ? (totalRevenue / (totalRevenue + pendingRevenue) * 100).ToString("0.0") : "0")%</span>
+                                </div>
+                                <div class="progress rounded-pill bg-light border" style="height: 10px;">
+                                    <div class="progress-bar rounded-pill bg-success" role="progressbar" style="width: @(totalRevenue + pendingRevenue > 0 ? (totalRevenue / (totalRevenue + pendingRevenue) * 100).ToString("0") : "0")%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activities Summary Grid -->
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="db-table-card p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="m-0 fw-bold text-dark" style="font-size: 1.1rem;">Recent Receivables</h4>
+                                <button class="btn btn-sm btn-link text-primary p-0 fw-bold text-decoration-none switch-to-tab" data-target="invoices">View Ledger</button>
+                            </div>
+                            <div class="table-responsive-custom">
+                                <table class="db-user-table m-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Invoice #</th>
+                                            <th>Customer</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (invoices.Any())
+                                        {
+                                            @foreach (var item in invoices.Take(4))
+                                            {
+                                                <tr>
+                                                    <td class="fw-bold text-dark">@item.InvoiceNumber</td>
+                                                    <td>@item.CustomerName</td>
+                                                    <td>$@item.Amount.ToString("N2")</td>
+                                                    <td>
+                                                        <span class="badge-custom @(item.Status == "Paid" ? "badge-paid" : item.Status == "Pending" ? "badge-pending" : "badge-overdue")">
+                                                            @item.Status
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4 text-muted">No invoices found.</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="db-table-card p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="m-0 fw-bold text-dark" style="font-size: 1.1rem;">Key Inventory Warning</h4>
+                                <button class="btn btn-sm btn-link text-primary p-0 fw-bold text-decoration-none switch-to-tab" data-target="inventory">Manage Items</button>
+                            </div>
+                            <div class="table-responsive-custom">
+                                <table class="db-user-table m-0">
+                                    <thead>
+                                        <tr>
+                                            <th>SKU</th>
+                                            <th>Item Name</th>
+                                            <th>In Stock</th>
+                                            <th>Level</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (inventory.Any())
+                                        {
+                                            @foreach (var item in inventory.OrderBy(i => i.Quantity).Take(4))
+                                            {
+                                                <tr>
+                                                    <td class="fw-bold text-dark">@item.SKU</td>
+                                                    <td>@item.Name</td>
+                                                    <td>@item.Quantity</td>
+                                                    <td>
+                                                        <span class="badge-custom @(item.Quantity > 50 ? "badge-instock" : item.Quantity > 5 ? "badge-lowstock" : "badge-outstock")">
+                                                            @(item.Quantity > 50 ? "Healthy" : item.Quantity > 5 ? "Low Stock" : "Critical")
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4 text-muted">No inventory items.</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: SALES & INVOICES -->
+            <section class="erp-tab-content" id="invoices">
+                <div class="erp-module-header">
+                    <div class="erp-module-title">
+                        <h2>Sales & Accounts Receivables</h2>
+                        <p>Generate, monitor, and update outgoing customer sales invoices.</p>
+                    </div>
+                    <button class="erp-btn erp-btn-primary" onclick="openModal('invoiceModal')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Create Invoice</span>
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="erp-filters">
+                    <input type="text" placeholder="Search by customer..." class="erp-filter-input" id="invoiceSearch" style="width: 280px;" />
+                    <select class="erp-filter-input" id="invoiceStatusFilter" style="width: 180px;">
+                        <option value="">All Statuses</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+
+                <!-- Datagrid Table Card -->
+                <div class="db-table-card">
+                    <div class="table-responsive-custom">
+                        <table class="db-user-table" id="invoicesTable">
+                            <thead>
+                                <tr>
+                                    <th>Invoice Number</th>
+                                    <th>Customer Name</th>
+                                    <th>Created Date</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Status State</th>
+                                    <th class="text-end">Update Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (invoices.Any())
+                                {
+                                    @foreach (var item in invoices)
+                                    {
+                                        <tr data-customer="@item.CustomerName.ToLower()" data-status="@item.Status">
+                                            <td class="fw-bold text-dark">@item.InvoiceNumber</td>
+                                            <td>@item.CustomerName</td>
+                                            <td>@item.CreatedDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@item.Description</td>
+                                            <td class="fw-bold text-primary">$@item.Amount.ToString("N2")</td>
+                                            <td>
+                                                <span class="badge-custom @(item.Status == "Paid" ? "badge-paid" : item.Status == "Pending" ? "badge-pending" : "badge-overdue")">
+                                                    @item.Status
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <select class="form-select form-select-sm d-inline-block update-invoice-status" data-id="@item.Id" style="width: 110px; font-size: 0.8rem; border-radius: 8px;">
+                                                    <option value="Paid" selected="@(item.Status == "Paid")">Paid</option>
+                                                    <option value="Pending" selected="@(item.Status == "Pending")">Pending</option>
+                                                    <option value="Overdue" selected="@(item.Status == "Overdue")">Overdue</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="7" class="text-center py-5 text-muted">No invoices populated in ERP databases.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: INVENTORY -->
+            <section class="erp-tab-content" id="inventory">
+                <div class="erp-module-header">
+                    <div class="erp-module-title">
+                        <h2>Material Assets & Catalog</h2>
+                        <p>Track current warehouse stock, items categories, and retail unit valuations.</p>
+                    </div>
+                    <button class="erp-btn erp-btn-primary" onclick="openAddInventoryModal()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Add Product</span>
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="erp-filters">
+                    <input type="text" placeholder="Search by name or SKU..." class="erp-filter-input" id="inventorySearch" style="width: 280px;" />
+                    <select class="erp-filter-input" id="inventoryCategoryFilter" style="width: 180px;">
+                        <option value="">All Categories</option>
+                        @foreach (var cat in inventory.Select(i => i.Category).Distinct())
+                        {
+                            <option value="@cat">@cat</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Catalog Grid -->
+                <div class="db-table-card">
+                    <div class="table-responsive-custom">
+                        <table class="db-user-table" id="inventoryTable">
+                            <thead>
+                                <tr>
+                                    <th>SKU Identifier</th>
+                                    <th>Item Catalog Name</th>
+                                    <th>Category Group</th>
+                                    <th>Quantity in Stock</th>
+                                    <th>Unit Valuation</th>
+                                    <th>Total Worth</th>
+                                    <th>Last Updated</th>
+                                    <th class="text-end">Edit Options</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (inventory.Any())
+                                {
+                                    @foreach (var item in inventory)
+                                    {
+                                        <tr data-name="@item.Name.ToLower() @item.SKU.ToLower()" data-category="@item.Category">
+                                            <td class="fw-bold text-dark">@item.SKU</td>
+                                            <td>@item.Name</td>
+                                            <td><span class="badge bg-light text-secondary border px-2 py-1 rounded-3">@item.Category</span></td>
+                                            <td>
+                                                <span class="fw-bold text-dark">@item.Quantity</span>
+                                            </td>
+                                            <td>$@item.UnitPrice.ToString("N2")</td>
+                                            <td class="fw-bold text-primary">$@((item.Quantity * item.UnitPrice).ToString("N2"))</td>
+                                            <td style="font-size: 0.82rem;">@item.LastUpdated.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-primary py-1 px-3 edit-inventory-btn" 
+                                                        data-id="@item.Id"
+                                                        data-sku="@item.SKU"
+                                                        data-name="@item.Name"
+                                                        data-category="@item.Category"
+                                                        data-quantity="@item.Quantity"
+                                                        data-price="@item.UnitPrice"
+                                                        style="border-radius: 8px; font-weight: 600; font-size: 0.8rem;">
+                                                    Edit Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="8" class="text-center py-5 text-muted">Warehouse catalog database empty.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: PURCHASE ORDERS -->
+            <section class="erp-tab-content" id="purchaseorders">
+                <div class="erp-module-header">
+                    <div class="erp-module-title">
+                        <h2>Supplier Procurement Ledgers</h2>
+                        <p>Purchase assets, raise requisitions, and track active supply pipelines.</p>
+                    </div>
+                    <button class="erp-btn erp-btn-primary" onclick="openModal('poModal')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Raise PO Requisition</span>
+                    </button>
+                </div>
+
+                <!-- Datagrid Table -->
+                <div class="db-table-card">
+                    <div class="table-responsive-custom">
+                        <table class="db-user-table">
+                            <thead>
+                                <tr>
+                                    <th>PO Number</th>
+                                    <th>Supplier Identity</th>
+                                    <th>Materials Requested</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Cost</th>
+                                    <th>Acquisition Cost</th>
+                                    <th>Order Date</th>
+                                    <th>Fulfillment State</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (purchaseOrders.Any())
+                                {
+                                    @foreach (var item in purchaseOrders)
+                                    {
+                                        <tr>
+                                            <td class="fw-bold text-dark">@item.PONumber</td>
+                                            <td>@item.SupplierName</td>
+                                            <td>@item.ItemName</td>
+                                            <td>@item.Quantity</td>
+                                            <td>$@item.UnitPrice.ToString("N2")</td>
+                                            <td class="fw-bold text-primary">$@item.TotalCost.ToString("N2")</td>
+                                            <td>@item.OrderDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>
+                                                <span class="badge-custom @(item.Status == "Received" ? "badge-received" : item.Status == "Approved" ? "badge-approved" : "badge-pending")">
+                                                    @item.Status
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="8" class="text-center py-5 text-muted">No procurement contracts raised.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: SHOPIFY ORDERS -->
+            <section class="erp-tab-content" id="shopify">
+                <div class="erp-module-header">
+                    <div class="erp-module-title">
+                        <h2>Shopify Order Management</h2>
+                        <p>Take manual orders, process customer purchases, and track shop fulfillment status.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        @if (shopifyOrders.Any())
+                        {
+                            <button class="erp-btn erp-btn-secondary text-danger border-danger-subtle" onclick="clearAllShopifyOrders()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path></svg>
+                                <span>Delete All Orders</span>
+                            </button>
+                        }
+                        <button class="erp-btn erp-btn-primary" onclick="openShopifyOrderModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>Take Shopify Order</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Summary -->
+                <div class="stats-widget-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #4f46e5; border-color: rgba(79, 70, 229, 0.25); background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(67, 56, 202, 0.08) 100%) !important;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">$@shopifyTotalSales.ToString("N2")</span>
+                            <span class="stat-title">Shopify Total Revenue</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #06b6d4; border-color: rgba(6, 182, 212, 0.25); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(8, 145, 178, 0.08) 100%) !important;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">@shopifyOrderCount orders</span>
+                            <span class="stat-title">Total Orders Logged</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.25); background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.08) 100%) !important;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                        </div>
+                        <div class="stat-data">
+                            <span class="stat-num">@shopifyUnfulfilledCount orders</span>
+                            <span class="stat-title">Unfulfilled Queue</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="erp-filters">
+                    <input type="text" placeholder="Search orders by customer or store..." class="erp-filter-input" id="shopifySearch" style="width: 280px;" />
+                    <select class="erp-filter-input" id="shopifyFulfillmentFilter" style="width: 180px;">
+                        <option value="">All Fulfillments</option>
+                        <option value="Fulfilled">Fulfilled</option>
+                        <option value="Unfulfilled">Unfulfilled</option>
+                    </select>
+                    <select class="erp-filter-input" id="shopifyPaymentFilter" style="width: 180px;">
+                        <option value="">All Payment States</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Refunded">Refunded</option>
+                        <option value="Voided">Voided</option>
+                    </select>
+                </div>
+
+                <!-- Datagrid Table Card -->
+                <div class="db-table-card">
+                    <div class="table-responsive-custom">
+                        <table class="db-user-table" id="shopifyTable">
+                            <thead>
+                                <tr>
+                                    <th>Order Name</th>
+                                    <th>Shopify Store</th>
+                                    <th>Customer Legal Name</th>
+                                    <th>Created Date</th>
+                                    <th>Items Qty</th>
+                                    <th>Order Total</th>
+                                    <th>Payment Status</th>
+                                    <th>Fulfillment Status</th>
+                                    <th class="text-end">Status Update</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (shopifyOrders.Any())
+                                {
+                                    @foreach (var order in shopifyOrders)
+                                    {
+                                        <tr data-search="@order.CustomerName.ToLower() @order.ShopifyDomain.ToLower() @order.OrderNumber.ToLower()" data-fulfillment="@order.FulfillmentStatus" data-payment="@order.FinancialStatus">
+                                            <td class="fw-bold text-dark">
+                                                <a href="javascript:void(0);" class="text-decoration-none view-shopify-order" data-id="@order.Id" style="color: var(--primary-color);">
+                                                    @order.OrderNumber
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-secondary border px-2 py-1 rounded-3">@order.ShopifyDomain</span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-semibold text-dark">@order.CustomerName</span>
+                                                    <span class="text-muted" style="font-size: 0.75rem;">@order.CustomerEmail</span>
+                                                </div>
+                                            </td>
+                                            <td style="font-size: 0.82rem;">@order.CreatedDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td class="fw-semibold text-dark">@order.OrderItems.Sum(oi => oi.Quantity)</td>
+                                            <td class="fw-bold text-primary">$@order.TotalAmount.ToString("N2")</td>
+                                            <td>
+                                                <span class="badge-custom @(order.FinancialStatus == "Paid" ? "badge-paid" : order.FinancialStatus == "Pending" ? "badge-pending" : "badge-overdue")">
+                                                    @order.FinancialStatus
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge-custom @(order.FulfillmentStatus == "Fulfilled" ? "badge-instock" : "badge-outstock")">
+                                                    @order.FulfillmentStatus
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="d-flex justify-content-end gap-1">
+                                                    <button class="btn btn-sm btn-outline-primary py-1 px-2 update-shopify-status-btn" 
+                                                            data-id="@order.Id"
+                                                            data-order="@order.OrderNumber"
+                                                            data-domain="@order.ShopifyDomain"
+                                                            data-financial="@order.FinancialStatus"
+                                                            data-fulfillment="@order.FulfillmentStatus"
+                                                            style="border-radius: 8px; font-weight: 600; font-size: 0.78rem;">
+                                                        Update Status
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger py-1 px-2 delete-shopify-order-btn" 
+                                                            data-id="@order.Id"
+                                                            data-order="@order.OrderNumber"
+                                                            style="border-radius: 8px; font-weight: 600; font-size: 0.78rem;">
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="9" class="text-center py-5 text-muted">No Shopify orders logged in ERP database.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: AUDIT LOGS -->
+            <section class="erp-tab-content" id="auditlogs">
+                <div class="erp-module-header">
+                    <div class="erp-module-title">
+                        <h2>System Audit Trails</h2>
+                        <p>Complete historical logs of actions made in the console database.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        @if (auditLogs.Any(a => a.Username == "Shopify Webhook" || a.Action.Contains("Shopify") || a.Details.Contains("Shopify")))
+                        {
+                            <button class="erp-btn erp-btn-secondary text-danger border-danger-subtle" onclick="clearShopifyAuditLogs()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <span>Delete Shopify Audits</span>
+                            </button>
+                        }
+                        @if (auditLogs.Any())
+                        {
+                            <button class="erp-btn erp-btn-secondary text-danger border-danger-subtle" onclick="clearAllAuditLogs()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <span>Delete All Audits</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="db-table-card p-4">
+                    <div class="table-responsive-custom" style="max-height: 480px; overflow-y: auto;">
+                        <table class="db-user-table">
+                            <thead>
+                                <tr>
+                                    <th>Time Event</th>
+                                    <th>User Identity</th>
+                                    <th>Action Log</th>
+                                    <th>Cryptographic Context Details</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (auditLogs.Any())
+                                {
+                                    @foreach (var log in auditLogs)
+                                    {
+                                        <tr>
+                                            <td class="text-nowrap" style="font-size: 0.85rem; font-family: var(--font-mono); color: var(--text-muted);">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                            <td class="fw-bold text-dark">@log.Username</td>
+                                            <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-3">@log.Action</span></td>
+                                            <td style="font-size: 0.85rem;" class="text-secondary">@log.Details</td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-danger py-1 px-2 delete-audit-btn" 
+                                                        data-id="@log.Id" 
+                                                        style="border-radius: 8px; font-weight: 600; font-size: 0.78rem;">
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-5 text-muted">No trace logs recorded.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- ERP MODALS SYSTEM -->
+<!-- ============================================== -->
+
+<!-- 1. Invoice Modal -->
+<div class="erp-modal-overlay" id="invoiceModal">
+    <div class="erp-modal-card">
+        <div class="erp-modal-header">
+            <h3>Create Customer Invoice</h3>
+            <button class="erp-modal-close" onclick="closeModal('invoiceModal')">&times;</button>
+        </div>
+        <form id="createInvoiceForm" class="erp-form">
+            @Html.AntiForgeryToken()
+            <div class="erp-input-group">
+                <label for="invCustomer">Customer Legal Name</label>
+                <input type="text" id="invCustomer" name="customerName" placeholder="e.g. Acme Corporation" required class="erp-input" />
+            </div>
+
+            <div class="erp-grid-half">
+                <div class="erp-input-group">
+                    <label for="invAmount">Invoice Value ($)</label>
+                    <input type="number" id="invAmount" name="amount" placeholder="0.00" step="0.01" min="0.01" required class="erp-input" />
+                </div>
+                <div class="erp-input-group">
+                    <label for="invStatus">Status State</label>
+                    <select id="invStatus" name="status" class="erp-select">
+                        <option value="Pending">Pending</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="erp-input-group">
+                <label for="invDesc">Description / Project Details</label>
+                <textarea id="invDesc" name="description" placeholder="Specify deliverables or billing items contract..." class="erp-textarea"></textarea>
+            </div>
+
+            <div class="erp-modal-actions">
+                <button type="button" class="erp-btn erp-btn-secondary" onclick="closeModal('invoiceModal')">Cancel</button>
+                <button type="submit" class="erp-btn erp-btn-primary">Generate Invoice</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. Inventory Modal -->
+<div class="erp-modal-overlay" id="inventoryModal">
+    <div class="erp-modal-card">
+        <div class="erp-modal-header">
+            <h3 id="inventoryModalTitle">Add Catalog Product</h3>
+            <button class="erp-modal-close" onclick="closeModal('inventoryModal')">&times;</button>
+        </div>
+        <form id="saveInventoryForm" class="erp-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="inventoryId" name="id" />
+
+            <div class="erp-grid-half">
+                <div class="erp-input-group">
+                    <label for="invSKU">SKU Barcode</label>
+                    <input type="text" id="invSKU" name="sku" placeholder="e.g. SKU-9009" required class="erp-input" />
+                </div>
+                <div class="erp-input-group">
+                    <label for="invCategory">Item Category</label>
+                    <input type="text" id="invCategory" name="category" placeholder="e.g. Hardware, Cables" required class="erp-input" />
+                </div>
+            </div>
+
+            <div class="erp-input-group">
+                <label for="invItemName">Catalog Name</label>
+                <input type="text" id="invItemName" name="name" placeholder="Item product detail description..." required class="erp-input" />
+            </div>
+
+            <div class="erp-grid-half">
+                <div class="erp-input-group">
+                    <label for="invQuantity">Stock Quantity</label>
+                    <input type="number" id="invQuantity" name="quantity" placeholder="0" min="0" required class="erp-input" />
+                </div>
+                <div class="erp-input-group">
+                    <label for="invUnitPrice">Unit Value ($)</label>
+                    <input type="number" id="invUnitPrice" name="unitPrice" placeholder="0.00" step="0.01" min="0.01" required class="erp-input" />
+                </div>
+            </div>
+
+            <div class="erp-modal-actions">
+                <button type="button" class="erp-btn erp-btn-secondary" onclick="closeModal('inventoryModal')">Cancel</button>
+                <button type="submit" class="erp-btn erp-btn-primary" id="saveInventoryBtn">Save to Catalog</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. Purchase Order Modal -->
+<div class="erp-modal-overlay" id="poModal">
+    <div class="erp-modal-card">
+        <div class="erp-modal-header">
+            <h3>Raise Supplier PO</h3>
+            <button class="erp-modal-close" onclick="closeModal('poModal')">&times;</button>
+        </div>
+        <form id="createPOForm" class="erp-form">
+            @Html.AntiForgeryToken()
+            <div class="erp-input-group">
+                <label for="poSupplier">Supplier Company</label>
+                <input type="text" id="poSupplier" name="supplierName" placeholder="e.g. Cisco Systems, Intel Corp" required class="erp-input" />
+            </div>
+
+            <div class="erp-input-group">
+                <label for="poItemName">Material Item Details</label>
+                <input type="text" id="poItemName" name="itemName" placeholder="What materials are being procured..." required class="erp-input" />
+            </div>
+
+            <div class="erp-grid-half">
+                <div class="erp-input-group">
+                    <label for="poQuantity">Units Required</label>
+                    <input type="number" id="poQuantity" name="quantity" placeholder="1" min="1" required class="erp-input" />
+                </div>
+                <div class="erp-input-group">
+                    <label for="poUnitPrice">Supplier Unit Price ($)</label>
+                    <input type="number" id="poUnitPrice" name="unitPrice" placeholder="0.00" step="0.01" min="0.01" required class="erp-input" />
+                </div>
+            </div>
+
+            <div class="erp-modal-actions">
+                <button type="button" class="erp-btn erp-btn-secondary" onclick="closeModal('poModal')">Cancel</button>
+                <button type="submit" class="erp-btn erp-btn-primary">Submit Requisition</button>
+            </div>
+        </form>
+</div>
+
+
+<!-- 4. Shopify Order Taking Form Modal -->
+<div class="erp-modal-overlay" id="shopifyOrderModal">
+    <div class="erp-modal-card" style="max-width: 850px; width: 95%;">
+        <div class="erp-modal-header">
+            <h3>Take Shopify Order Manual Log</h3>
+            <button type="button" class="erp-modal-close" onclick="closeModal('shopifyOrderModal')">&times;</button>
+        </div>
+        <form id="createShopifyOrderForm" class="erp-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="itemsJson" id="itemsJsonInput" />
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <div class="erp-input-group">
+                        <label for="soShopifyDomain">Shopify Store Domain</label>
+                        <input type="text" id="soShopifyDomain" name="shopifyDomain" placeholder="e.g. fashion-store.myshopify.com" required class="erp-input" value="apparel-hype.myshopify.com" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="erp-input-group">
+                        <label for="soCustomerName">Customer Legal Name</label>
+                        <input type="text" id="soCustomerName" name="customerName" placeholder="John Doe" required class="erp-input" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <div class="erp-input-group">
+                        <label for="soCustomerEmail">Customer Email Address</label>
+                        <input type="email" id="soCustomerEmail" name="customerEmail" placeholder="customer@example.com" required class="erp-input" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="erp-input-group">
+                        <label for="soCustomerPhone">Customer Contact Phone</label>
+                        <input type="tel" id="soCustomerPhone" name="customerPhone" placeholder="+1 (555) 123-4567" class="erp-input" />
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-dark mt-3 mb-2 border-bottom pb-1" style="font-size: 0.95rem;">Shipping Address</h5>
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <div class="erp-input-group">
+                        <label for="soShippingAddress">Street Address</label>
+                        <input type="text" id="soShippingAddress" name="shippingAddress" placeholder="123 Main St, Apt 4B" required class="erp-input" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="erp-input-group">
+                        <label for="soCity">City</label>
+                        <input type="text" id="soCity" name="city" placeholder="Springfield" required class="erp-input" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <div class="erp-input-group">
+                        <label for="soProvince">State / Province</label>
+                        <input type="text" id="soProvince" name="province" placeholder="IL" required class="erp-input" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="erp-input-group">
+                        <label for="soCountry">Country</label>
+                        <input type="text" id="soCountry" name="country" placeholder="USA" required class="erp-input" value="USA" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="erp-input-group">
+                        <label for="soZipCode">Zip / Postal Code</label>
+                        <input type="text" id="soZipCode" name="zipCode" placeholder="62701" required class="erp-input" />
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-dark mt-3 mb-2 border-bottom pb-1 d-flex justify-content-between align-items-center" style="font-size: 0.95rem;">
+                <span>Order Items</span>
+                <button type="button" class="btn btn-sm btn-outline-primary px-3 py-1" onclick="addShopifyItemRow()" style="font-size: 0.8rem; border-radius: 6px; font-weight: 600;">
+                    + Add Item Row
+                </button>
+            </h5>
+
+            <div class="table-responsive-custom mb-3" style="max-height: 200px; overflow-y: auto;">
+                <table class="db-user-table" id="shopifyItemsTable" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Catalog Select / Product</th>
+                            <th style="width: 20%;">SKU Barcode</th>
+                            <th style="width: 15%;">Unit Price</th>
+                            <th style="width: 15%;">Quantity</th>
+                            <th style="width: 10%; text-align: right;">Total</th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="shopifyItemsBody">
+                        <!-- Dynamic item rows will be appended here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-7">
+                    <div class="erp-input-group">
+                        <label for="soOrderNotes">Order Instructions / Notes</label>
+                        <textarea id="soOrderNotes" name="orderNotes" placeholder="Delivery notes or packing instructions..." class="erp-textarea" style="height: 110px;"></textarea>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="bg-light p-3 rounded-4 border" style="font-size: 0.85rem;">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-secondary">Subtotal</span>
+                            <span class="fw-semibold text-dark" id="soSubtotalLabel">$0.00</span>
+                            <input type="hidden" name="subtotal" id="soSubtotalInput" value="0.00" />
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 align-items-center">
+                            <span class="text-secondary">Shipping Cost</span>
+                            <input type="number" name="shippingCost" id="soShippingInput" value="0.00" min="0.00" step="0.01" class="erp-input text-end py-1 px-2" style="width: 80px; font-size: 0.8rem; border-radius: 6px;" oninput="recalcShopifyOrderTotals()" />
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 align-items-center">
+                            <span class="text-secondary">Est. Tax (8.0%)</span>
+                            <span class="fw-semibold text-dark" id="soTaxLabel">$0.00</span>
+                            <input type="hidden" name="taxCost" id="soTaxInput" value="0.00" />
+                        </div>
+                        <hr class="my-2" />
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark" style="font-size: 0.95rem;">Order Total</span>
+                            <span class="fw-bold text-primary" style="font-size: 1.1rem;" id="soTotalLabel">$0.00</span>
+                            <input type="hidden" name="totalAmount" id="soTotalInput" value="0.00" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <div class="erp-input-group">
+                        <label for="soFinancialStatus">Payment Financial Status</label>
+                        <select id="soFinancialStatus" name="financialStatus" class="erp-select">
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="erp-input-group">
+                        <label for="soFulfillmentStatus">Fulfillment Status</label>
+                        <select id="soFulfillmentStatus" name="fulfillmentStatus" class="erp-select">
+                            <option value="Unfulfilled">Unfulfilled</option>
+                            <option value="Fulfilled">Fulfilled</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="erp-modal-actions">
+                <button type="button" class="erp-btn erp-btn-secondary" onclick="closeModal('shopifyOrderModal')">Cancel</button>
+                <button type="submit" class="erp-btn erp-btn-primary">Take Shopify Order</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 5. Shopify Order Status Update Modal -->
+<div class="erp-modal-overlay" id="shopifyStatusModal">
+    <div class="erp-modal-card" style="max-width: 450px;">
+        <div class="erp-modal-header">
+            <h3>Update Shopify Status</h3>
+            <button type="button" class="erp-modal-close" onclick="closeModal('shopifyStatusModal')">&times;</button>
+        </div>
+        <form id="updateShopifyStatusForm" class="erp-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="statusOrderId" />
+            
+            <div class="mb-3">
+                <span class="text-secondary" style="font-size: 0.85rem;">Updating status for Order</span>
+                <h4 class="text-dark fw-bold m-0" id="statusOrderNameLabel">#1001</h4>
+                <small class="text-muted" id="statusOrderDomainLabel">apparel-hype.myshopify.com</small>
+            </div>
+
+            <div class="erp-input-group">
+                <label for="statusFinancial">Payment Status</label>
+                <select id="statusFinancial" name="financialStatus" class="erp-select">
+                    <option value="Pending">Pending</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Refunded">Refunded</option>
+                    <option value="Voided">Voided</option>
+                </select>
+            </div>
+
+            <div class="erp-input-group">
+                <label for="statusFulfillment">Fulfillment Status</label>
+                <select id="statusFulfillment" name="fulfillmentStatus" class="erp-select">
+                    <option value="Unfulfilled">Unfulfilled</option>
+                    <option value="Fulfilled">Fulfilled</option>
+                    <option value="Restocked">Restocked</option>
+                </select>
+            </div>
+
+            <div class="erp-modal-actions">
+                <button type="button" class="erp-btn erp-btn-secondary" onclick="closeModal('shopifyStatusModal')">Cancel</button>
+                <button type="submit" class="erp-btn erp-btn-primary">Update Status</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 6. Shopify Order Detail View Modal -->
+<div class="erp-modal-overlay" id="shopifyOrderDetailModal">
+    <div class="erp-modal-card" style="max-width: 650px; width: 95%;">
+        <div class="erp-modal-header">
+            <h3>Shopify Order Details</h3>
+            <button type="button" class="erp-modal-close" onclick="closeModal('shopifyOrderDetailModal')">&times;</button>
+        </div>
+        <div class="erp-form">
+            <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                <div>
+                    <h4 class="text-dark fw-bold m-0" id="detailOrderNumber">#1001</h4>
+                    <span class="badge bg-light text-secondary border px-2 py-1 rounded-3 mt-1" id="detailShopifyDomain">domain.com</span>
+                </div>
+                <div class="text-end">
+                    <span class="text-secondary" style="font-size: 0.8rem;" id="detailCreatedDate">2026-07-17 12:00</span>
+                    <div class="mt-1 d-flex gap-2">
+                        <span class="badge-custom" id="detailFinancialBadge">Paid</span>
+                        <span class="badge-custom" id="detailFulfillmentBadge">Fulfilled</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <h5 class="fw-bold text-dark" style="font-size: 0.9rem;">Customer Information</h5>
+                    <div class="p-3 bg-light rounded-4 border" style="font-size: 0.85rem; line-height: 1.5;">
+                        <div class="fw-semibold text-dark" id="detailCustomerName">Name</div>
+                        <div class="text-secondary" id="detailCustomerEmail">Email</div>
+                        <div class="text-secondary" id="detailCustomerPhone">Phone</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="fw-bold text-dark" style="font-size: 0.9rem;">Shipping Address</h5>
+                    <div class="p-3 bg-light rounded-4 border" style="font-size: 0.85rem; line-height: 1.5;">
+                        <div class="text-dark" id="detailShippingAddress">Street Address</div>
+                        <div class="text-secondary" id="detailShippingCityState">City, Province, Country</div>
+                        <div class="text-secondary" id="detailShippingZip">ZipCode</div>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-dark" style="font-size: 0.9rem;">Line Items</h5>
+            <div class="table-responsive-custom mb-3" style="max-height: 200px; overflow-y: auto;">
+                <table class="db-user-table" style="font-size: 0.82rem;">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Product Name</th>
+                            <th>Unit Price</th>
+                            <th>Qty</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailItemsBody">
+                        <!-- Dynamic items -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <h5 class="fw-bold text-dark" style="font-size: 0.9rem;">Order Notes</h5>
+                    <div class="p-3 bg-light rounded-4 border text-secondary" style="font-size: 0.85rem; min-height: 70px;" id="detailOrderNotes">
+                        None
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="p-3 bg-light rounded-4 border" style="font-size: 0.85rem; line-height: 1.6;">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-secondary">Subtotal</span>
+                            <span class="fw-semibold text-dark" id="detailSubtotal">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-secondary">Shipping</span>
+                            <span class="fw-semibold text-dark" id="detailShipping">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-secondary">Tax</span>
+                            <span class="fw-semibold text-dark" id="detailTax">$0.00</span>
+                        </div>
+                        <hr class="my-1" />
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark">Total</span>
+                            <span class="fw-bold text-primary" style="font-size: 1rem;" id="detailTotal">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="erp-modal-actions mt-3">
+                <button type="button" class="erp-btn erp-btn-secondary" onclick="closeModal('shopifyOrderDetailModal')">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        // ==============================================
+        // TOAST NOTIFICATIONS
+        // ==============================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `custom-toast toast-${type}`;
+            
+            let icon = '';
+            if (type === 'success') {
+                icon = '<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            } else if (type === 'error') {
+                icon = '<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            } else {
+                icon = '<svg class="toast-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+            }
+
+            toast.innerHTML = `${icon}<span class="toast-message">${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 400);
+            }, 3500);
+        }
+
+        // ==============================================
+        // TABS NAVIGATION CONTROLS
+        // ==============================================
+        document.querySelectorAll('.erp-nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.getAttribute('data-target');
+                
+                // Toggle active buttons
+                document.querySelectorAll('.erp-nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Toggle active panels
+                document.querySelectorAll('.erp-tab-content').forEach(panel => panel.classList.remove('active'));
+                document.getElementById(target).classList.add('active');
+
+                // Close sidebar on mobile
+                const sidebar = document.querySelector('.erp-sidebar');
+                if (sidebar) {
+                    sidebar.classList.remove('active');
+                }
+            });
+        });
+
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => {
+                const sidebar = document.querySelector('.erp-sidebar');
+                if (sidebar) {
+                    sidebar.classList.toggle('active');
+                }
+            });
+        }
+
+        // Handle internal quick link redirects
+        document.querySelectorAll('.switch-to-tab').forEach(link => {
+            link.addEventListener('click', () => {
+                const target = link.getAttribute('data-target');
+                const sidebarBtn = document.querySelector(`.erp-nav-btn[data-target="${target}"]`);
+                if (sidebarBtn) {
+                    sidebarBtn.click();
+                }
+            });
+        });
+
+        // ==============================================
+        // MODALS SHOW/HIDE SYSTEM
+        // ==============================================
+        function openModal(modalId) {
+            const overlay = document.getElementById(modalId);
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.add('active'), 10);
+        }
+
+        function closeModal(modalId) {
+            const overlay = document.getElementById(modalId);
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.style.display = 'none', 300);
+        }
+
+        function openAddInventoryModal() {
+            document.getElementById('inventoryId').value = '';
+            document.getElementById('saveInventoryForm').reset();
+            document.getElementById('invSKU').removeAttribute('readonly');
+            document.getElementById('inventoryModalTitle').innerText = 'Add Catalog Product';
+            document.getElementById('saveInventoryBtn').innerText = 'Add Product to Catalog';
+            openModal('inventoryModal');
+        }
+
+        // ==============================================
+        // SEARCH AND FILTERS HANDLERS
+        // ==============================================
+        // Invoices filter
+        const invSearch = document.getElementById('invoiceSearch');
+        const invStatusFilter = document.getElementById('invoiceStatusFilter');
+        const invTableRows = document.querySelectorAll('#invoicesTable tbody tr');
+
+        function filterInvoices() {
+            const searchVal = invSearch.value.toLowerCase();
+            const statusVal = invStatusFilter.value;
+
+            invTableRows.forEach(row => {
+                const customer = row.getAttribute('data-customer') || '';
+                const status = row.getAttribute('data-status') || '';
+                
+                const matchesSearch = customer.includes(searchVal);
+                const matchesStatus = statusVal === '' || status === statusVal;
+
+                if (matchesSearch && matchesStatus) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        if (invSearch) invSearch.addEventListener('input', filterInvoices);
+        if (invStatusFilter) invStatusFilter.addEventListener('change', filterInvoices);
+
+        // Inventory filter
+        const itemSearch = document.getElementById('inventorySearch');
+        const itemCatFilter = document.getElementById('inventoryCategoryFilter');
+        const itemTableRows = document.querySelectorAll('#inventoryTable tbody tr');
+
+        function filterInventory() {
+            const searchVal = itemSearch.value.toLowerCase();
+            const catVal = itemCatFilter.value;
+
+            itemTableRows.forEach(row => {
+                const searchKeys = row.getAttribute('data-name') || '';
+                const category = row.getAttribute('data-category') || '';
+
+                const matchesSearch = searchKeys.includes(searchVal);
+                const matchesCat = catVal === '' || category === catVal;
+
+                if (matchesSearch && matchesCat) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        if (itemSearch) itemSearch.addEventListener('input', filterInventory);
+        if (itemCatFilter) itemCatFilter.addEventListener('change', filterInventory);
+
+        // ==============================================
+        // AJAX FORMS SUBMISSIONS
+        // ==============================================
+        
+        // 1. Create Invoice Submission
+        const invoiceForm = document.getElementById('createInvoiceForm');
+        invoiceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(invoiceForm);
+            
+            try {
+                const response = await fetch('@Url.Action("CreateInvoice", "Dashboard")', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeModal('invoiceModal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('A database communication error occurred.', 'error');
+            }
+        });
+
+        // 2. Update Invoice Status Inline
+        document.querySelectorAll('.update-invoice-status').forEach(select => {
+            select.addEventListener('change', async () => {
+                const invoiceId = select.getAttribute('data-id');
+                const newStatus = select.value;
+                
+                const tokenElement = document.querySelector('input[name="__RequestVerificationToken"]');
+                const verificationToken = tokenElement ? tokenElement.value : '';
+
+                const params = new URLSearchParams();
+                params.append('id', invoiceId);
+                params.append('status', newStatus);
+                params.append('__RequestVerificationToken', verificationToken);
+
+                try {
+                    const response = await fetch('@Url.Action("UpdateInvoiceStatus", "Dashboard")', {
+                        method: 'POST',
+                        body: params
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                } catch (err) {
+                    showToast('Failed to update invoice status.', 'error');
+                }
+            });
+        });
+
+        // 3. Edit Inventory Populate Modal
+        document.querySelectorAll('.edit-inventory-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('inventoryId').value = btn.getAttribute('data-id');
+                document.getElementById('invSKU').value = btn.getAttribute('data-sku');
+                document.getElementById('invSKU').setAttribute('readonly', 'true');
+                document.getElementById('invCategory').value = btn.getAttribute('data-category');
+                document.getElementById('invItemName').value = btn.getAttribute('data-name');
+                document.getElementById('invQuantity').value = btn.getAttribute('data-quantity');
+                document.getElementById('invUnitPrice').value = btn.getAttribute('data-price');
+                
+                document.getElementById('inventoryModalTitle').innerText = 'Edit Catalog Product details';
+                document.getElementById('saveInventoryBtn').innerText = 'Save Changes';
+                
+                openModal('inventoryModal');
+            });
+        });
+
+        // 4. Save/Edit Inventory Submission
+        const inventoryForm = document.getElementById('saveInventoryForm');
+        inventoryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(inventoryForm);
+
+            try {
+                const response = await fetch('@Url.Action("SaveInventoryItem", "Dashboard")', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeModal('inventoryModal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to update catalogue data.', 'error');
+            }
+        });
+
+        // 5. Raise PO Requisition Submission
+        const poForm = document.getElementById('createPOForm');
+        poForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(poForm);
+
+            try {
+                const response = await fetch('@Url.Action("CreatePurchaseOrder", "Dashboard")', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeModal('poModal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to commit PO requisition.', 'error');
+            }
+        });
+
+        // ==============================================
+        // SHOPIFY INTEGRATION SCRIPTS
+        // ==============================================
+        
+        // ERP Catalog Items Data mapped from server
+        const erpInventoryCatalog = [
+            @foreach(var item in inventory) {
+                <text>{ id: @item.Id, sku: '@item.SKU', name: '@item.Name', price: @item.UnitPrice, quantity: @item.Quantity },</text>
+            }
+        ];
+
+        // All Shopify orders details for client-side modal viewing
+        const clientShopifyOrders = {
+            @foreach(var order in shopifyOrders) {
+                <text>
+                '@order.Id': {
+                    orderNumber: '@order.OrderNumber',
+                    domain: '@order.ShopifyDomain',
+                    name: '@order.CustomerName',
+                    email: '@order.CustomerEmail',
+                    phone: '@order.CustomerPhone',
+                    address: '@order.ShippingAddress',
+                    city: '@order.City',
+                    province: '@order.Province',
+                    country: '@order.Country',
+                    zip: '@order.ZipCode',
+                    subtotal: @order.Subtotal,
+                    shipping: @order.ShippingCost,
+                    tax: @order.TaxCost,
+                    total: @order.TotalAmount,
+                    financial: '@order.FinancialStatus',
+                    fulfillment: '@order.FulfillmentStatus',
+                    notes: '@Html.Raw(order.OrderNotes.Replace("'", "\\'"))',
+                    date: '@order.CreatedDate.ToString("yyyy-MM-dd HH:mm")',
+                    items: [
+                        @foreach(var item in order.OrderItems) {
+                            <text>{ sku: '@item.SKU', name: '@item.ItemName', qty: @item.Quantity, price: @item.UnitPrice },</text>
+                        }
+                    ]
+                },
+                </text>
+            }
+        };
+
+        // Open Manual Order Modal
+        function openShopifyOrderModal() {
+            document.getElementById('createShopifyOrderForm').reset();
+            document.getElementById('shopifyItemsBody').innerHTML = '';
+            
+            // Add a first blank row
+            addShopifyItemRow();
+            
+            recalcShopifyOrderTotals();
+            openModal('shopifyOrderModal');
+        }
+
+        // Add dynamically a new row to Shopify Order Items
+        function addShopifyItemRow() {
+            const body = document.getElementById('shopifyItemsBody');
+            const rowCount = body.children.length;
+            const rowId = `soRow_${Date.now()}_${rowCount}`;
+
+            let selectOptions = '<option value="">-- Choose Product --</option>';
+            erpInventoryCatalog.forEach(prod => {
+                selectOptions += `<option value="${prod.sku}">${prod.sku} - ${prod.name} ($${prod.price.toFixed(2)})</option>`;
+            });
+            selectOptions += '<option value="custom">-- Custom Product --</option>';
+
+            const tr = document.createElement('tr');
+            tr.id = rowId;
+            tr.innerHTML = `
+                <td>
+                    <select class="form-select form-select-sm so-item-select" style="border-radius: 8px;" onchange="handleShopifyItemSelect('${rowId}')">
+                        ${selectOptions}
+                    </select>
+                    <input type="text" class="form-control form-control-sm mt-1 so-custom-name-input d-none" placeholder="Enter Product Name..." />
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm so-sku-input" readonly placeholder="SKU" />
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm so-price-input text-end" readonly placeholder="0.00" step="0.01" min="0.01" oninput="recalcShopifyOrderTotals()" />
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm so-qty-input" value="1" min="1" oninput="recalcShopifyOrderTotals()" />
+                </td>
+                <td class="text-end fw-semibold text-dark py-3 so-row-total">$0.00</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeShopifyItemRow('${rowId}')" style="line-height: 1;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </td>
+            `;
+
+            body.appendChild(tr);
+            recalcShopifyOrderTotals();
+        }
+
+        // Remove row
+        function removeShopifyItemRow(rowId) {
+            const body = document.getElementById('shopifyItemsBody');
+            if (body.children.length > 1) {
+                const tr = document.getElementById(rowId);
+                if (tr) tr.remove();
+                recalcShopifyOrderTotals();
+            } else {
+                showToast('An order must contain at least 1 item.', 'info');
+            }
+        }
+
+        // Handle item selection dropdown
+        function handleShopifyItemSelect(rowId) {
+            const tr = document.getElementById(rowId);
+            if (!tr) return;
+
+            const select = tr.querySelector('.so-item-select');
+            const customNameInput = tr.querySelector('.so-custom-name-input');
+            const skuInput = tr.querySelector('.so-sku-input');
+            const priceInput = tr.querySelector('.so-price-input');
+            const qtyInput = tr.querySelector('.so-qty-input');
+
+            const val = select.value;
+
+            if (val === 'custom') {
+                customNameInput.classList.remove('d-none');
+                customNameInput.required = true;
+                skuInput.readOnly = false;
+                skuInput.value = '';
+                priceInput.readOnly = false;
+                priceInput.value = '';
+            } else if (val === '') {
+                customNameInput.classList.add('d-none');
+                customNameInput.required = false;
+                skuInput.readOnly = true;
+                skuInput.value = '';
+                priceInput.readOnly = true;
+                priceInput.value = '';
+            } else {
+                customNameInput.classList.add('d-none');
+                customNameInput.required = false;
+                
+                const product = erpInventoryCatalog.find(p => p.sku === val);
+                if (product) {
+                    skuInput.readOnly = true;
+                    skuInput.value = product.sku;
+                    priceInput.readOnly = true;
+                    priceInput.value = product.price.toFixed(2);
+                }
+            }
+            recalcShopifyOrderTotals();
+        }
+
+        // Recalculate Shopify totals
+        function recalcShopifyOrderTotals() {
+            let subtotal = 0;
+            const rows = document.querySelectorAll('#shopifyItemsBody tr');
+
+            rows.forEach(row => {
+                const select = row.querySelector('.so-item-select');
+                const priceInput = row.querySelector('.so-price-input');
+                const qtyInput = row.querySelector('.so-qty-input');
+                const rowTotalLabel = row.querySelector('.so-row-total');
+
+                const price = parseFloat(priceInput.value) || 0;
+                const qty = parseInt(qtyInput.value) || 0;
+                const rowTotal = price * qty;
+                subtotal += rowTotal;
+
+                rowTotalLabel.innerText = `$${rowTotal.toFixed(2)}`;
+            });
+
+            const shipping = parseFloat(document.getElementById('soShippingInput').value) || 0;
+            const tax = subtotal * 0.08; // 8% Tax rate
+            const total = subtotal + shipping + tax;
+
+            document.getElementById('soSubtotalLabel').innerText = `$${subtotal.toFixed(2)}`;
+            document.getElementById('soSubtotalInput').value = subtotal.toFixed(2);
+
+            document.getElementById('soTaxLabel').innerText = `$${tax.toFixed(2)}`;
+            document.getElementById('soTaxInput').value = tax.toFixed(2);
+
+            document.getElementById('soTotalLabel').innerText = `$${total.toFixed(2)}`;
+            document.getElementById('soTotalInput').value = total.toFixed(2);
+        }
+
+        // Submit Shopify Order form via AJAX
+        const createShopifyOrderForm = document.getElementById('createShopifyOrderForm');
+        createShopifyOrderForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate all line items
+            const items = [];
+            const rows = document.querySelectorAll('#shopifyItemsBody tr');
+            let hasError = false;
+
+            rows.forEach(row => {
+                const select = row.querySelector('.so-item-select');
+                const customNameInput = row.querySelector('.so-custom-name-input');
+                const skuInput = row.querySelector('.so-sku-input');
+                const priceInput = row.querySelector('.so-price-input');
+                const qtyInput = row.querySelector('.so-qty-input');
+
+                let itemName = '';
+                if (select.value === 'custom') {
+                    itemName = customNameInput.value.trim();
+                } else if (select.value !== '') {
+                    const prod = erpInventoryCatalog.find(p => p.sku === select.value);
+                    itemName = prod ? prod.name : '';
+                }
+
+                const sku = skuInput.value.trim();
+                const price = parseFloat(priceInput.value) || 0;
+                const qty = parseInt(qtyInput.value) || 0;
+
+                if (!sku || !itemName || price <= 0 || qty <= 0) {
+                    hasError = true;
+                    return;
+                }
+
+                items.push({
+                    sku: sku,
+                    itemName: itemName,
+                    quantity: qty,
+                    unitPrice: price
+                });
+            });
+
+            if (hasError || items.length === 0) {
+                showToast('Please specify valid product, SKU, quantity and price for all items.', 'error');
+                return;
+            }
+
+            document.getElementById('itemsJsonInput').value = JSON.stringify(items);
+
+            const formData = new FormData(createShopifyOrderForm);
+
+            try {
+                const response = await fetch('@Url.Action("CreateShopifyOrder", "Dashboard")', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeModal('shopifyOrderModal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('A database communication error occurred.', 'error');
+            }
+        });
+
+        // Open Shopify Status update modal
+        document.querySelectorAll('.update-shopify-status-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Avoid triggering row clicks
+                const id = btn.getAttribute('data-id');
+                const order = btn.getAttribute('data-order');
+                const domain = btn.getAttribute('data-domain');
+                const financial = btn.getAttribute('data-financial');
+                const fulfillment = btn.getAttribute('data-fulfillment');
+
+                document.getElementById('statusOrderId').value = id;
+                document.getElementById('statusOrderNameLabel').innerText = order;
+                document.getElementById('statusOrderDomainLabel').innerText = domain;
+                document.getElementById('statusFinancial').value = financial;
+                document.getElementById('statusFulfillment').value = fulfillment;
+
+                openModal('shopifyStatusModal');
+            });
+        });
+
+        // Submit Status Update
+        const updateShopifyStatusForm = document.getElementById('updateShopifyStatusForm');
+        updateShopifyStatusForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(updateShopifyStatusForm);
+
+            try {
+                const response = await fetch('@Url.Action("UpdateShopifyOrderStatus", "Dashboard")', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeModal('shopifyStatusModal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to update Shopify Order status.', 'error');
+            }
+        });
+
+        // Delete individual Shopify order
+        document.querySelectorAll('.delete-shopify-order-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.getAttribute('data-id');
+                const orderNum = btn.getAttribute('data-order');
+                if (!confirm(`Are you sure you want to delete Shopify Order ${orderNum}?`)) return;
+
+                try {
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const response = await fetch('@Url.Action("DeleteShopifyOrder", "Dashboard")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({ id: id, __RequestVerificationToken: token || '' })
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                } catch (err) {
+                    showToast('Failed to delete Shopify Order.', 'error');
+                }
+            });
+        });
+
+        // Clear all Shopify orders
+        window.clearAllShopifyOrders = async function() {
+            if (!confirm('Are you sure you want to delete ALL Shopify orders? This action cannot be undone.')) return;
+
+            try {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                const response = await fetch('@Url.Action("ClearAllShopifyOrders", "Dashboard")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({ __RequestVerificationToken: token || '' })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to clear Shopify Orders.', 'error');
+            }
+        };
+
+        // Delete single Audit Log
+        document.querySelectorAll('.delete-audit-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.getAttribute('data-id');
+                if (!confirm('Are you sure you want to delete this audit log entry?')) return;
+
+                try {
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    const response = await fetch('@Url.Action("DeleteAuditLog", "Dashboard")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({ id: id, __RequestVerificationToken: token || '' })
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                } catch (err) {
+                    showToast('Failed to delete audit log entry.', 'error');
+                }
+            });
+        });
+
+        // Clear Shopify Audit Logs
+        window.clearShopifyAuditLogs = async function() {
+            if (!confirm('Are you sure you want to delete all Shopify-related audit logs?')) return;
+
+            try {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                const response = await fetch('@Url.Action("ClearShopifyAuditLogs", "Dashboard")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({ __RequestVerificationToken: token || '' })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to clear Shopify audit logs.', 'error');
+            }
+        };
+
+        // Clear All Audit Logs
+        window.clearAllAuditLogs = async function() {
+            if (!confirm('Are you sure you want to delete ALL system audit logs? This action cannot be undone.')) return;
+
+            try {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                const response = await fetch('@Url.Action("ClearAllAuditLogs", "Dashboard")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({ __RequestVerificationToken: token || '' })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Failed to clear audit logs.', 'error');
+            }
+        };
+
+        // Details Modal View loading
+        document.querySelectorAll('.view-shopify-order').forEach(link => {
+            link.addEventListener('click', () => {
+                const id = link.getAttribute('data-id');
+                const order = clientShopifyOrders[id];
+                if (!order) return;
+
+                document.getElementById('detailOrderNumber').innerText = order.orderNumber;
+                document.getElementById('detailShopifyDomain').innerText = order.domain;
+                document.getElementById('detailCreatedDate').innerText = order.date;
+                document.getElementById('detailCustomerName').innerText = order.name;
+                document.getElementById('detailCustomerEmail').innerText = order.email;
+                document.getElementById('detailCustomerPhone').innerText = order.phone || 'N/A';
+                document.getElementById('detailShippingAddress').innerText = order.address;
+                document.getElementById('detailShippingCityState').innerText = `${order.city}, ${order.province}, ${order.country}`;
+                document.getElementById('detailShippingZip').innerText = order.zip;
+
+                // Badges
+                const finBadge = document.getElementById('detailFinancialBadge');
+                finBadge.innerText = order.financial;
+                finBadge.className = 'badge-custom ' + (order.financial === 'Paid' ? 'badge-paid' : order.financial === 'Pending' ? 'badge-pending' : 'badge-overdue');
+
+                const fulBadge = document.getElementById('detailFulfillmentBadge');
+                fulBadge.innerText = order.fulfillment;
+                fulBadge.className = 'badge-custom ' + (order.fulfillment === 'Fulfilled' ? 'badge-instock' : 'badge-outstock');
+
+                // Items
+                const body = document.getElementById('detailItemsBody');
+                body.innerHTML = '';
+                order.items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="fw-semibold text-dark">${item.sku}</td>
+                        <td>${item.name}</td>
+                        <td>$${item.price.toFixed(2)}</td>
+                        <td>${item.qty}</td>
+                        <td class="text-end fw-semibold text-primary">$${(item.qty * item.price).toFixed(2)}</td>
+                    `;
+                    body.appendChild(tr);
+                });
+
+                // Notes & Totals
+                document.getElementById('detailOrderNotes').innerText = order.notes || 'No customer notes.';
+                document.getElementById('detailSubtotal').innerText = `$${order.subtotal.toFixed(2)}`;
+                document.getElementById('detailShipping').innerText = `$${order.shipping.toFixed(2)}`;
+                document.getElementById('detailTax').innerText = `$${order.tax.toFixed(2)}`;
+                document.getElementById('detailTotal').innerText = `$${order.total.toFixed(2)}`;
+
+                openModal('shopifyOrderDetailModal');
+            });
+        });
+
+        // Search & Filters for Shopify table
+        const shSearch = document.getElementById('shopifySearch');
+        const shFulfillFilter = document.getElementById('shopifyFulfillmentFilter');
+        const shPayFilter = document.getElementById('shopifyPaymentFilter');
+        const shTableRows = document.querySelectorAll('#shopifyTable tbody tr');
+
+        function filterShopifyOrders() {
+            const query = shSearch.value.toLowerCase();
+            const fulfillVal = shFulfillFilter.value;
+            const payVal = shPayFilter.value;
+
+            shTableRows.forEach(row => {
+                const searchTxt = row.getAttribute('data-search') || '';
+                const fulfillTxt = row.getAttribute('data-fulfillment') || '';
+                const payTxt = row.getAttribute('data-payment') || '';
+
+                const matchesSearch = searchTxt.includes(query);
+                const matchesFulfill = fulfillVal === '' || fulfillTxt === fulfillVal;
+                const matchesPay = payVal === '' || payTxt === payVal;
+
+                if (matchesSearch && matchesFulfill && matchesPay) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        if (shSearch) shSearch.addEventListener('input', filterShopifyOrders);
+        if (shFulfillFilter) shFulfillFilter.addEventListener('change', filterShopifyOrders);
+        if (shPayFilter) shPayFilter.addEventListener('change', filterShopifyOrders);
+    </script>
+}
