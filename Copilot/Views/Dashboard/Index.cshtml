@@ -686,6 +686,12 @@
                                                 <a href="javascript:void(0);" class="text-decoration-none view-shopify-order" data-id="@order.Id" style="color: var(--primary-color);">
                                                     @order.OrderNumber
                                                 </a>
+                                                @if (order.OrderItems != null && order.OrderItems.Any())
+                                                {
+                                                    <div class="text-secondary fw-normal" style="font-size: 0.78rem; margin-top: 2px;">
+                                                        @string.Join(", ", order.OrderItems.Select(i => i.ItemName))
+                                                    </div>
+                                                }
                                             </td>
                                             <td>
                                                 <span class="badge bg-light text-secondary border px-2 py-1 rounded-3">@order.ShopifyDomain</span>
@@ -2057,5 +2063,127 @@
         if (shSearch) shSearch.addEventListener('input', filterShopifyOrders);
         if (shFulfillFilter) shFulfillFilter.addEventListener('change', filterShopifyOrders);
         if (shPayFilter) shPayFilter.addEventListener('change', filterShopifyOrders);
+
+        // --- FLOATING AI CHATBOT CONTROLLER ---
+        window.toggleChatbot = function() {
+            const chatWindow = document.getElementById('chatbotWindow');
+            const chatInput = document.getElementById('chatbotInput');
+            if (chatWindow) {
+                chatWindow.classList.toggle('active');
+                if (chatWindow.classList.contains('active') && chatInput) {
+                    chatInput.focus();
+                }
+            }
+        };
+
+        const chatInput = document.getElementById('chatbotInput');
+        const chatSend = document.getElementById('chatbotSendBtn');
+        const chatBody = document.getElementById('chatbotBody');
+
+        function appendChatMessage(sender, text, quickActions = []) {
+            const chatBodyEl = document.getElementById('chatbotBody');
+            if (!chatBodyEl) return;
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `chat-msg ${sender}`;
+
+            let html = `<div class="msg-bubble">${formatChatText(text)}`;
+            if (quickActions && quickActions.length > 0) {
+                html += `<div class="chat-quick-actions">`;
+                quickActions.forEach(action => {
+                    html += `<button class="btn-quick-action" onclick="switchNavTab('${action.targetTab}')">${action.label}</button>`;
+                });
+                html += `</div>`;
+            }
+            html += `</div>`;
+
+            msgDiv.innerHTML = html;
+            chatBodyEl.appendChild(msgDiv);
+            chatBodyEl.scrollTop = chatBodyEl.scrollHeight;
+        }
+
+        function formatChatText(text) {
+            let formatted = text
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code>$1</code>');
+            return `<p>${formatted}</p>`;
+        }
+
+        function showTypingIndicator() {
+            const chatBodyEl = document.getElementById('chatbotBody');
+            if (!chatBodyEl) return;
+
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'chat-msg bot';
+            typingDiv.id = 'chatTypingIndicator';
+            typingDiv.innerHTML = `
+                <div class="msg-bubble">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            chatBodyEl.appendChild(typingDiv);
+            chatBodyEl.scrollTop = chatBodyEl.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const typing = document.getElementById('chatTypingIndicator');
+            if (typing) typing.remove();
+        }
+
+        async function handleChatSubmit() {
+            const inputEl = document.getElementById('chatbotInput');
+            if (!inputEl) return;
+            const query = inputEl.value.trim();
+            if (!query) return;
+
+            appendChatMessage('user', query);
+            inputEl.value = '';
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/api/chatbot/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: query })
+                });
+
+                const result = await response.json();
+                removeTypingIndicator();
+
+                if (result.success && result.data) {
+                    appendChatMessage('bot', result.data.answer, result.data.quickActions);
+                } else {
+                    appendChatMessage('bot', '⚠️ Sorry, I encountered an issue processing your query. Please try again.');
+                }
+            } catch (err) {
+                removeTypingIndicator();
+                appendChatMessage('bot', '⚠️ Connection error. Please check your network and try again.');
+            }
+        }
+
+        window.sendChatPrompt = function(promptText) {
+            const inputEl = document.getElementById('chatbotInput');
+            if (inputEl) {
+                inputEl.value = promptText;
+                handleChatSubmit();
+            }
+        };
+
+        window.switchNavTab = function(tabName) {
+            const navLink = document.querySelector(`.nav-link-custom[data-tab="${tabName}"]`);
+            if (navLink) {
+                navLink.click();
+                showToast(`Switched to ${tabName.toUpperCase()} tab!`, 'info');
+            }
+        };
     </script>
 }

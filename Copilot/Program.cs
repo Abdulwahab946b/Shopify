@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpClient();
 
 // Configure Cookie Policy to resolve Correlation Failed issues on HTTP localhost
 builder.Services.Configure<CookiePolicyOptions>(options =>
